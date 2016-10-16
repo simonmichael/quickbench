@@ -8,6 +8,8 @@ It is not smart or complicated like "bench" or criterion; it is
 good for quick and dirty, exploratory, comparative measurements
 that you can understand at a glance.
 
+```bash
 $ git clone https://github.com/simonmichael/quickbench.git
 $ stack install ./quickbench   # ensure $PATH includes ~/.local/bin
 $ quickbench -h
+```
