@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables, QuasiQuotes #-}
 
 module QuickBench (
   defaultMain
@@ -8,163 +8,201 @@ where
 import Control.Exception
 import Control.Monad
 import Data.List
+import Data.List.Split (splitOn)
+import Data.Maybe
 import Data.Time.Clock
-import Data.Time.Format ()
-import System.Console.GetOpt
+-- import Data.Time.Format ()
+import Safe
+import System.Console.Docopt
+import System.Directory
 import System.Environment
 import System.Exit
 import System.IO
 import System.Process
+import Text.Show.Pretty
 import Text.Printf
 import Text.Tabular
 import qualified Text.Tabular.AsciiArt as TA
 
-usage :: String
-usage = usageInfo usagehdr options ++ usageftr
+---------------------------------------80----------------------------------------
+docoptpatterns :: Docopt
+docoptpatterns = [docopt|quickbench 1.0
+Run some test commands, possibly with different executables, once or more
+and show their best execution times.
+Commands are specified as one or more quote-enclosed arguments,
+and/or one per line in CMDSFILE; or read from a default file [./bench.sh].
+With -w, commands' first words are replaced with a new executable
+(or multiple comma-separated executables, showing times for all).
+Note: tests executable files only, not shell builtins; options must precede args.
 
-usagehdr :: String
-usagehdr = "quickbench [-f TESTSFILE] [-nITERATIONS] [-NCYCLES] [-pPRECISION] [-v|-V] [EXES]\n" ++
-           "\n" ++
-           "Combine zero or more executables with each of the lines in TESTFILE,\n" ++
-           "run the resulting commands once or more, and show the best execution times.\n"
+Usage:
+  quickbench [options] [<cmd>...]
 
-options :: [OptDescr Opt]
-options = [
-  Option "f" ["file"] (ReqArg File "TESTSFILE") "file containing tests, one per line, default: bench.tests"
- ,Option "n" ["iterations"] (ReqArg Iterations "N") "run each test this many times, default: 1"
- ,Option "N" ["cycles"] (ReqArg Cycles "N") "run the whole suite this many times, default: 1"
- ,Option "p" ["precision"] (ReqArg Prec "N") "show times with this many decimal places, default: 2"
- ,Option "v" ["verbose"] (NoArg Verbose) "show commands being run"
- ,Option "V" ["more verbose"] (NoArg MoreVerbose) "show command output"
- ,Option "h" ["help"] (NoArg Help) "show this help"
- ]             
+Options:
+  -f, --file CMDSFILE   file containing commands, one per line (- for stdin)
+  -w, --with EXE[,...]  replace first word of commands with these executables
+  -n, --iterations=N    run each test this many times [default: 1]
+  -N, --cycles=N        run the whole suite this many times [default: 1]
+  -p, --precision=N     show times with this many decimal places [default: 2]
+  -v, --verbose         show commands being run
+  -V, --more-verbose    show command output
+      --debug           show debug output for this program
+  -h, --help            show this help
 
-usageftr :: String
-usageftr = "\n" ++
-           "Tips:\n" ++
-           "- tests can be commented out with #\n" ++
-           "- executables and additional arguments can be combined in quotes\n"
-           -- "- results are saved in benchresults.{html,txt}\n"
+Examples:
+quickbench ls
+quickbench 'echo a' 'echo b' -w echo,print -n 1000 -N 2
+|] -- if removing [default] annotations, also update pattern matches below
 
-data Opt = File {value::String}
-         | Iterations  {value::String}
-         | Cycles  {value::String}
-         | Prec {value::String}
-         | Verbose
-         | MoreVerbose
-         | Help
-           deriving (Eq,Show)
+defaultFile :: FilePath
+defaultFile = "bench.sh"
 
--- options helpers
+data Opts = Opts {
+--    docopts     :: Arguments,
+   file        :: Maybe FilePath
+  ,executables :: [String]
+  ,iterations  :: Int
+  ,cycles      :: Int
+  ,precision   :: Int
+  ,verbose     :: Bool
+  ,moreVerbose :: Bool
+  ,debug       :: Bool
+  ,help        :: Bool
+  ,clicmds     :: [String]
+} deriving (Show)
 
-fileopt :: [Opt] -> String
-fileopt = optValueWithDefault File "bench.tests"
-
--- TODO read errors should throw a userError
-precisionopt :: [Opt] -> Int
-precisionopt = read . optValueWithDefault Prec "2"
-
-iterationsopt :: [Opt] -> Int
-iterationsopt = read . optValueWithDefault Iterations "1"
-
-cyclesopt :: [Opt] -> Int
-cyclesopt = read . optValueWithDefault Cycles "1"
-
-verboseopt :: [Opt] -> Bool
-verboseopt opts = Verbose `elem` opts || moreverboseopt opts
-
-moreverboseopt :: [Opt] -> Bool
-moreverboseopt = (MoreVerbose `elem`)
-
-optValueWithDefault :: (String -> Opt) -> String -> [Opt] -> String
-optValueWithDefault optcons def opts =
-    last $ def : optValuesForConstructor optcons opts
-
-optValuesForConstructor :: (String -> Opt) -> [Opt] -> [String]
-optValuesForConstructor optcons opts = concatMap get opts
-    where get o = [v | optcons v == o] where v = value o
-
-parseArgs :: [String] -> IO ([Opt],[String])
-parseArgs as =
-  case (getOpt Permute options as) of
-    (_,_,errs@(_:_)) -> fail $ concat errs
-    (opts,[],_)      -> return (opts, [""])
-    (opts,args,[])   -> return (opts,args)
+getOpts :: IO Opts
+getOpts = do
+  dopts <- parseArgsOrExit docoptpatterns =<< getArgs
+  let
+    flag f   = dopts `isPresent` longOption f
+    option f = dopts `getArg` longOption f
+    readint s =
+      case readMay s of
+        Just a  -> return a
+        Nothing -> fail $ "could not read " ++ show s ++ " as an integer"
+    (lateflags,args) = partition ("-" `isPrefixOf`) $ dopts `getAllArgs` (argument "cmd")
+  iterations' <- readint $ fromJust $ option "iterations" -- fromJust safe because of [default:] above
+  cycles'     <- readint $ fromJust $ option "cycles"
+  precision'  <- readint $ fromJust $ option "precision"
+  let
+    opts = Opts {
+--        docopts     = dopts,
+       file        = option "file"
+      ,executables = maybe [] (splitOn ",") $ option "with"
+      ,iterations  = iterations'
+      ,cycles      = cycles'
+      ,precision   = precision'
+      ,verbose     = flag "verbose"
+      ,moreVerbose = flag "more-verbose"
+      ,debug       = flag "debug"
+      ,help        = flag "help"
+      ,clicmds     = args
+      }
+  when (debug opts || "--debug" `elem` lateflags) $ err $ ppShow opts ++ "\n"
+  when (help opts) $ putStrLn (usage docoptpatterns) >> exitSuccess
+  unless (null lateflags) $
+    fail $ printf "option %s should appear before argument %s"
+      (show $ head lateflags)
+      (show $ head args) -- safe, we don't see lateflags without some regular args
+  return opts
 
 -- | Run the quickbench program, returning an error message if there was a problem.
 defaultMain :: IO (Maybe String)
 defaultMain =
   (runSuite >> return Nothing)
-    `catch` \(e :: IOException) -> return $ Just $ show e
+    `catch` \(e :: SomeException) -> return $
+      if fromException e == Just ExitSuccess
+      then Nothing
+      else Just $ show e
   where
     runSuite = do
-      args <- getArgs
-      if ("-h" `elem` args || "--help" `elem` args)
-      then
-        putStr usage
-      else do
-        (opts,exes) <- parseArgs args
-        let (file, num) = (fileopt opts, iterationsopt opts)
-        tests <- liftM (filter istest . lines) (readFile file)
-        now <- getCurrentTime
-        putStrLn $ printf "Using %s" file
-        putStrLn $ printf "Running %d tests %d times with %d executables at %s:"
-                     (length tests) num (length exes) (show now)
-        hSetBuffering stdout NoBuffering
-        let
-          runTestWithExes t = mapM (runTestWithExe t) exes
-          runTestWithExe t e = mapM (runTestOnce opts t e) [1..num]
-        forM [1..cyclesopt opts] $ \cyc -> do
-          results <- mapM runTestWithExes tests
-          summarise opts tests exes cyc results
-        return ()
+      opts <- getOpts
+      filecmds <-
+        (filter istest . lines) <$>
+        (case (file opts, clicmds opts) of
+          (Just "-", _) -> getContents
+          (Just f, _)   -> readFile f
+          (Nothing, []) -> doesFileExist defaultFile >>=
+            \yes -> if yes then readFile defaultFile else return ""
+          (Nothing, _)  -> return [])
+      let cmds = filecmds ++ clicmds opts
+      when (null cmds) $ do
+        out opts "No test commands found; provide some as arguments, with -f, or in ./bench.sh\n"
+        exitSuccess
+      now <- getCurrentTime
+      out opts $ printf "Running %d tests %d times%s at %s:\n"
+        (length cmds)
+        (iterations opts)
+        (case executables opts of
+          [] -> ""
+          es -> printf " with %d executables" (length es))
+        (show now)
+      let
+        exes = case executables opts of
+          [] -> [""]
+          es -> es
+      hSetBuffering stdout NoBuffering
+      forM_ [1..cycles opts] $ \cyc -> do
+        results <- mapM (runTestWithExes opts exes) cmds
+        summarise opts cmds exes cyc results
 
-istest :: String -> Bool
-istest s = not (null s' || ("#" `isPrefixOf` s')) where s' = clean s
+runTestWithExes :: Opts -> [String] -> String -> IO [[Float]]
+runTestWithExes opts exes cmd = mapM (runTestWithExe opts cmd) exes
 
-clean :: String -> String
-clean = unwords . words
+runTestWithExe :: Opts -> String -> String -> IO [Float]
+runTestWithExe opts cmd exe = mapM (runTestOnce opts cmd exe) [1..iterations opts]
 
-runTestOnce :: [Opt] -> String -> String -> Int -> IO Float
-runTestOnce opts argsstr exestr iteration = do
-  let
-    cmd = clean $ exestr ++ " " ++ argsstr
-    ws = words cmd
-  case ws of
-    [] -> fail "some command should be provided"
-    exe:args -> do
-      when (verboseopt opts) $ putStr (show iteration ++ ": " ++ cmd) >> hFlush stdout
-      t <- time opts exe args
-      when (verboseopt opts) $ printf "\t[%ss]\n" (showtime opts t)
-      return t
+runTestOnce :: Opts -> String -> String -> Int -> IO Float
+runTestOnce opts cmd exe iteration = do
+  let (cmd',exe',args) = replaceExecutable exe cmd
+  dbg opts $ printf "replaceExecutable: %s -> %s\n" (show (cmd,exe)) (show (cmd',exe',args))
+  outv opts (show iteration ++ ": " ++ cmd' ++ "\n")
+  t <- time opts exe' args
+  outv opts $ printf "\t[%ss]\n" (showtime opts t)
+  return t
 
-time :: [Opt] -> String -> [String] -> IO Float
+-- | Replace a command's first word with the specified executable.
+-- If the executable is empty, the command remains unchanged.
+-- If the command is empty, the executable becomes the command.
+-- Return the new command string, executable, and arguments.
+replaceExecutable :: String -> String -> (String,String,[String])
+replaceExecutable exe ""  = (exe, exe, [])
+replaceExecutable ""  cmd = (cmd, w, ws) where w:ws = words $ clean cmd
+replaceExecutable exe cmd = (unwords (exe:args), exe, args) where args = drop 1 $ words $ clean cmd
+  -- XXX might display wrong quoting here
+
+time :: Opts -> String -> [String] -> IO Float
 time opts exe args = do
   t1 <- getCurrentTime
-  (code, out, err) <- readProcessWithExitCode' exe args ""
+  (c, o, e) <- readProcessWithExitCode' exe args ""
   t2 <- getCurrentTime
-  when (moreverboseopt opts && not (null out)) $
-    putStr $ (if verboseopt opts then "\n" else "")++out
-  unless (code == ExitSuccess) $
-    putStr $ " (error: " ++ clean err ++ ") "
+  when (not $ null o) $ outvv opts $ (if verbose opts then "\n" else "") ++ o
+  unless (c == ExitSuccess) $ out opts $ " (error: " ++ clean e ++ ") "
   return $ realToFrac $ diffUTCTime t2 t1
 
--- ^ Return a failure when the executable is missing, also.
+-- ^ This variant also returns a failure when the executable is missing.
 readProcessWithExitCode' :: FilePath -> [String] -> String -> IO (ExitCode, String, String)
 readProcessWithExitCode' exe args inp =
   readProcessWithExitCode exe args inp
     `catch` \(e :: IOException) -> return (ExitFailure 1, "", show e)
 
-summarise :: [Opt] -> [String] -> [String] -> Int -> [[[Float]]] -> IO ()
-summarise opts tests exes cyc results = do
-  putStrLn $ printf "\nBest times%s:" (if cyclesopt opts > 1 then " "++show cyc else "")
-  let t = maketable opts tests exes results
-  putStrLn $ TA.render id id id t
+summarise :: Opts -> [String] -> [String] -> Int -> [[[Float]]] -> IO ()
+summarise opts cmds exes cyc results = do
+  out opts $ printf "\nBest times%s:\n" (if cycles opts > 1 then " "++show cyc else "")
+  let t = maketable opts cmds' exes results
+  out opts $ TA.render id id id t
   -- let outname = "benchresults"
   -- writeFile (outname <.> "txt") $ TA.render id id id t
   -- writeFile (outname <.> "html") $ renderHtml $ TH.css TH.defaultCss +++ TH.render stringToHtml stringToHtml stringToHtml t
+  where
+    cmds' =
+      case executables opts of
+        []  -> cmds
+        [e] -> [c | (c,_,_) <- map (replaceExecutable e) cmds]
+        _   -> map (unwords . drop 1 . words) cmds
 
-maketable :: [Opt] -> [String] -> [String] -> [[[Float]]] -> Table String String String
+maketable :: Opts -> [String] -> [String] -> [[[Float]]] -> Table String String String
 maketable opts rownames colnames results = Table rowhdrs colhdrs rows
  where
   rowhdrs = Group NoLine $ map Header $ padright rownames
@@ -173,5 +211,27 @@ maketable opts rownames colnames results = Table rowhdrs colhdrs rows
   padright ss = map (printf (printf "%%-%ds" w)) ss
       where w = maximum $ map length ss
 
-showtime :: [Opt] -> (Float -> String)
-showtime opts = printf $ "%." ++ show (precisionopt opts) ++ "f"
+showtime :: Opts -> (Float -> String)
+showtime opts = printf $ "%." ++ show (precision opts) ++ "f"
+
+istest :: String -> Bool
+istest s = not (null s' || ("#" `isPrefixOf` s')) where s' = clean s
+
+clean :: String -> String
+clean = unwords . words
+
+out :: Opts -> String -> IO ()
+out _ = putStr
+
+outv :: Opts -> String -> IO ()
+outv opts s = when (verbose opts || moreVerbose opts) $ putStr s
+
+outvv :: Opts -> String -> IO ()
+outvv opts s = when (moreVerbose opts) $ putStr s
+
+err :: String -> IO ()
+err = hPutStr stderr
+
+dbg :: Opts -> String -> IO ()
+dbg opts s = when (debug opts) $ err s
+
