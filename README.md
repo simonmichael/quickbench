@@ -9,6 +9,5 @@ good for quick and dirty, exploratory, comparative measurements
 that you can understand at a glance.
 
 $ git clone https://github.com/simonmichael/quickbench.git
-$ stack install ./quickbench
-# ensure $PATH includes ~/.local/bin
+$ stack install ./quickbench   # ensure $PATH includes ~/.local/bin
 $ quickbench -h
