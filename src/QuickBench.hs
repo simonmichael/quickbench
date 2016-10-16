@@ -50,8 +50,8 @@ Options:
   -h, --help            show this help
 
 Examples:
-quickbench ls
-quickbench 'echo a' 'echo b' -w echo,print -n 1000 -N 2
+$ quickbench 'sleep 1'
+$ quickbench -p4 -n100 -N2 -w echo,expr 'echo a' 'echo 3 * 1000000'
 |] -- if removing [default] annotations, also update pattern matches below
 
 defaultFile :: FilePath
