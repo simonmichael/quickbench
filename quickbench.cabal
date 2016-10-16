@@ -1,0 +1,53 @@
+name:                quickbench
+version:             1.0
+synopsis:            Quick comparative command-line benchmarking
+description:         Please see README.md
+homepage:            https://github.com/simonmichael/quickbench#readme
+license:             GPL
+license-file:        LICENSE
+author:              Simon Michael
+maintainer:          simon@joyful.com
+copyright:           Copyright: (c) 2016 Simon Michael
+category:            Development
+build-type:          Simple
+cabal-version:       >=1.10
+tested-with:         GHC==8.0
+
+extra-source-files:
+  README.md
+  CHANGES
+
+library
+  hs-source-dirs:      src
+  exposed-modules:     QuickBench
+  build-depends:
+     base >= 4.7 && < 5
+    ,process
+    ,tabular
+    ,time
+  default-language:    Haskell2010
+  ghc-options:         -Wall
+
+executable quickbench
+  hs-source-dirs:      app
+  main-is:             Main.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+     quickbench
+    ,base
+    ,process
+  default-language:    Haskell2010
+  ghc-options:         -Wall
+
+test-suite quickbench-test
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             Spec.hs
+  build-depends:       base
+                     , quickbench
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N -Wall
+  default-language:    Haskell2010
+
+source-repository head
+  type:     git
+  location: https://github.com/simonmichael/quickbench

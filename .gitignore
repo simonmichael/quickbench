@@ -1,0 +1,15 @@
+#.*
+#_*
+*~
+*.o
+*.hi
+*.dyn_o
+*.dyn_hi
+*.p_o
+tags
+TAGS
+.idea
+*.iml
+.stack-work
+dist
+dist-newstyle
