@@ -2,6 +2,8 @@
 
 Quick & easy benchmarking of command-line programs.
 
+## About
+
 This is a reboot of the simplebench benchmarking tool from the hledger
 project. You can use it as a fancier "time" command for benchmarking 
 command-line programs, or as a haskell library (eg in package benchmark 
@@ -11,6 +13,8 @@ quickbench is not smart or complicated like "bench" or criterion; it is
 good for quick and dirty, exploratory, comparative measurements
 that you can run quickly and understand at a glance.
 I find it very useful; patches welcome!
+
+## Examples
 
 ```bash
 $ git clone https://github.com/simonmichael/quickbench.git
@@ -32,7 +36,7 @@ Best times:
 ```
 
 or in a file.. `bench.sh` will be used by default:
-```bash
+```
 $ echo 'echo 3 * 1000000' > bench.sh
 $ quickbench
 Running 1 tests 1 times at 2016-10-16 23:53:04.743899 UTC:
@@ -46,7 +50,7 @@ Best times:
 ```
 
 You can compare results with different executables:
-```bash
+```
 $ quickbench -w echo,expr -p5
 Running 1 tests 1 times with 2 executables at 2016-10-16 23:56:40.808703 UTC:
 
@@ -59,7 +63,7 @@ Best times:
 ```
 
 and repeat tests to reduce and evaluate jitter:
-```bash
+```
 $ quickbench -w echo,expr -p5 -n100 -N2
 Running 1 tests 100 times with 2 executables at 2016-10-16 23:57:34.387764 UTC:
 
@@ -79,7 +83,7 @@ Best times 2:
 ```
 
 You can turn a shell script into a benchmark suite by adding a shebang line:  
-```bash
+```
 $ cat 410-run-time.sh
 #!/usr/bin/env quickbench -v -p2 -n2 -w hledger-410-before,hledger-410-8bde75c -f
 hledger -f 10000x1000x10.journal print
@@ -123,8 +127,9 @@ Best times:
 +-----------------------------------++--------------------+---------------------+
 ```
 
-Usage:
-```bash
+## Usage
+
+```
 $ quickbench -h
 quickbench 1.0
 Run some test commands, possibly with different executables, once or more
