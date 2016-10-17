@@ -1,6 +1,6 @@
 name:                quickbench
 version:             1.0
-synopsis:            Quick comparative command-line benchmarking
+synopsis:            quick & easy benchmarking of command-line programs
 description:         Please see README.md
 homepage:            https://github.com/simonmichael/quickbench#readme
 license:             GPL
