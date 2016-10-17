@@ -26,14 +26,14 @@ that I (and others) can understand at a glance.
 Install it easily on most platforms with [stack](https://haskell-lang.org/get-started) (or cabal). 
 It's not yet on Hackage, so you'll need the source:
 
-```bash
+```
 $ git clone https://github.com/simonmichael/quickbench.git
 $ cd quickbench
 $ stack install   # ensure $PATH includes ~/.local/bin
 ```
 
 You can specify test commands as arguments:
-```bash
+```
 $ quickbench 'sleep 1'
 Running 1 tests 1 times at 2016-10-16 23:06:48.058578 UTC:
 
