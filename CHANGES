@@ -8,7 +8,7 @@ quickbench changes:
 
 - more robust command execution, signal handling, output, error reporting
 
-- switch to docopt; options must precede args for now
+- switch to docopt, options must precede args for now
 
 - new UI: full commands are specified by arguments/file/stdin,
   alternate executables can be specified with -w, flags cleanup
@@ -17,3 +17,4 @@ quickbench changes:
 
 - -N/--cycles repeats the whole test suite
 
+- man page

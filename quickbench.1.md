@@ -12,8 +12,14 @@ quickbench - quick & easy benchmarking of command-line programs
 
 # DESCRIPTION
 
-Runs some test commands, possibly with different executables, once or more
-and shows their best execution times in tabular format.
+quickbench runs some test commands, possibly with different executables, 
+once or more and shows their best execution times in tabular format.
+
+It produces very simple output (elapsed seconds), 
+as quickly as possible (running commands just once by default), 
+and tabulates results from multiple executables. 
+I find it useful for quick and dirty, exploratory, and comparative  
+measurements that you (and others) can understand at a glance.
 
 Commands are specified as one or more quote-enclosed arguments,
 and/or one per line in CMDSFILE; or read from a default file [./bench.sh].
@@ -105,6 +111,8 @@ https://github.com/simonmichael/quickbench/issues
 Home: https://github.com/simonmichael/quickbench
 
 bench(1): https://github.com/Gabriel439/bench
+
+time(1)
 
 # COPYRIGHT
 

@@ -1,20 +1,30 @@
-# quickbench
+# quickbench 1.0
 
 Quick & easy benchmarking of command-line programs.
 
+  [About](#about)
+| [Examples](#examples) 
+| [Usage](#usage)
+| [Related](#related-work)
+
+
 ## About
 
-This is a reboot of the simplebench benchmarking tool from the hledger
-project. You can use it as a fancier "time" command for benchmarking 
-command-line programs, or as a haskell library (eg in package benchmark 
-suites). 
+quickbench is an update and repackaging of a benchmarking tool I've been 
+using in the hledger project since 2008.
+Use it like a more powerful "time" command for benchmarking general command-line programs,
+or for creating repeatable benchmark scripts for your projects.
 
-quickbench is not smart or complicated like "bench" or criterion; it is 
-good for quick and dirty, exploratory, comparative measurements
-that you can run quickly and understand at a glance.
-I find it very useful; patches welcome!
+quickbench produces very simple output (elapsed seconds),
+as quickly as possible (running commands just once by default),
+and tabulates results from multiple executables.
+I find it very useful for quick and dirty, exploratory, and comparative measurements
+that I (and others) can understand at a glance.
 
 ## Examples
+
+Install it easily on most platforms with [stack](https://haskell-lang.org/get-started) (or cabal). 
+It's not yet on Hackage, so you'll need the source:
 
 ```bash
 $ git clone https://github.com/simonmichael/quickbench.git
@@ -35,7 +45,8 @@ Best times:
 +---------++------+
 ```
 
-or in a file.. `bench.sh` will be used by default:
+or put them in a file and use `-f FILE`. 
+A file named `bench.sh` in the current directory will be used automatically:
 ```
 $ echo 'echo 3 * 1000000' > bench.sh
 $ quickbench
@@ -62,7 +73,8 @@ Best times:
 +-------------++---------+---------+
 ```
 
-and repeat tests to reduce and evaluate jitter:
+and run tests repeatedly to reduce or observe jitter. 
+(quickbench assumes the quickest measurement is the truest one):
 ```
 $ quickbench -w echo,expr -p5 -n100 -N2
 Running 1 tests 100 times with 2 executables at 2016-10-16 23:57:34.387764 UTC:
@@ -155,3 +167,25 @@ Options:
   -h, --help            show this help
 ```
 
+## Related
+
+[bench](https://github.com/Gabriel439/bench#readme) (Gabriel Gonzalez 2016) is another 
+command line benchmarking tool written in Haskell.
+Use that one if you need detailed statistical analysis and output, or HTML reports. 
+Here is bench's output for the echo/expr example above: 
+```
+$ bench 'echo 3 * 1000000'; bench 'expr 3 \* 1000000'
+benchmarking echo 3 * 1000000
+time                 2.215 ms   (2.173 ms .. 2.250 ms)
+                     0.995 R²   (0.989 R² .. 0.998 R²)
+mean                 2.238 ms   (2.203 ms .. 2.296 ms)
+std dev              147.6 μs   (92.84 μs .. 265.3 μs)
+variance introduced by outliers: 48% (moderately inflated)
+
+benchmarking expr 3 \* 1000000
+time                 3.484 ms   (3.405 ms .. 3.556 ms)
+                     0.994 R²   (0.987 R² .. 0.998 R²)
+mean                 3.564 ms   (3.497 ms .. 3.684 ms)
+std dev              280.3 μs   (178.0 μs .. 494.9 μs)
+variance introduced by outliers: 52% (severely inflated)
+```
