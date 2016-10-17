@@ -48,11 +48,13 @@ Options:
   -V, --more-verbose    show command output
       --debug           show debug output for this program
   -h, --help            show this help
-
-Examples:
-$ quickbench 'sleep 1'
-$ quickbench -p4 -n100 -N2 -w echo,expr 'echo a' 'echo 3 * 1000000'
-|] -- if removing [default] annotations, also update pattern matches below
+|]
+-- CLI help. When changing this, remember to sync:
+-- quickbench.cabal
+-- README.md
+-- quickbench.1.md
+-- any Just assumptions below, if changing [default] annotations.
+-- Try to avoid writing the same thing different ways in all of these places.
 
 defaultFile :: FilePath
 defaultFile = "bench.sh"
@@ -145,7 +147,7 @@ defaultMain =
       hSetBuffering stdout NoBuffering
       forM_ [1..cycles opts] $ \cyc -> do
         results <- mapM (runTestWithExes opts exes) cmds
-        summarise opts cmds exes cyc results
+        printSummary opts cmds exes cyc results
 
 runTestWithExes :: Opts -> [String] -> String -> IO [[Float]]
 runTestWithExes opts exes cmd = mapM (runTestWithExe opts cmd) exes
@@ -187,8 +189,8 @@ readProcessWithExitCode' exe args inp =
   readProcessWithExitCode exe args inp
     `catch` \(e :: IOException) -> return (ExitFailure 1, "", show e)
 
-summarise :: Opts -> [String] -> [String] -> Int -> [[[Float]]] -> IO ()
-summarise opts cmds exes cyc results = do
+printSummary :: Opts -> [String] -> [String] -> Int -> [[[Float]]] -> IO ()
+printSummary opts cmds exes cyc results = do
   out opts $ printf "\nBest times%s:\n" (if cycles opts > 1 then " "++show cyc else "")
   let t = maketable opts cmds' exes results
   out opts $ TA.render id id id t
