@@ -11,7 +11,8 @@ import Data.List
 import Data.List.Split (splitOn)
 import Data.Maybe
 import Data.Time.Clock
--- import Data.Time.Format ()
+import Data.Time.Format
+import Data.Time.LocalTime
 import Safe
 import System.Console.Docopt
 import System.Directory
@@ -132,14 +133,14 @@ defaultMain =
       when (null cmds) $ do
         out opts "No test commands found; provide some as arguments, with -f, or in ./bench.sh\n"
         exitSuccess
-      now <- getCurrentTime
+      now <- getCurrentZonedTime
       out opts $ printf "Running %d tests %d times%s at %s:\n"
         (length cmds)
         (iterations opts)
         (case executables opts of
           [] -> ""
           es -> printf " with %d executables" (length es))
-        (show now)
+        (formatTime defaultTimeLocale "%Y-%m-%d %T %Z" now)
       let
         exes = case executables opts of
           [] -> [""]
@@ -148,6 +149,12 @@ defaultMain =
       forM_ [1..cycles opts] $ \cyc -> do
         results <- mapM (runTestWithExes opts exes) cmds
         printSummary opts cmds exes cyc results
+
+getCurrentZonedTime :: IO ZonedTime
+getCurrentZonedTime = do
+  t <- getCurrentTime
+  tz <- getCurrentTimeZone
+  return $ utcToZonedTime tz t
 
 runTestWithExes :: Opts -> [String] -> String -> IO [[Float]]
 runTestWithExes opts exes cmd = mapM (runTestWithExe opts cmd) exes
