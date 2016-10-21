@@ -10,8 +10,17 @@ quickbench \- quick & easy benchmarking of command\-line programs
 \f[C]quickbench\ [options]\ [<cmd>...]\f[]
 .SH DESCRIPTION
 .PP
-Runs some test commands, possibly with different executables, once or
-more and shows their best execution times in tabular format.
+quickbench runs some test commands, possibly with different executables,
+once or more and shows their best execution times in tabular format.
+.PP
+It produces very simple output (elapsed seconds), as quickly as possible
+(running commands just once by default), and tabulates results from
+multiple executables.
+I find it useful for quick and dirty, exploratory, and comparative
+.PD 0
+.P
+.PD
+measurements that you (and others) can understand at a glance.
 .PP
 Commands are specified as one or more quote\-enclosed arguments, and/or
 one per line in CMDSFILE; or read from a default file [./bench.sh].
@@ -119,9 +128,11 @@ easier.
 https://github.com/simonmichael/quickbench/issues
 .SH SEE ALSO
 .PP
-Home: https://github.com/simonmichael/quickbench
+Home page: https://github.com/simonmichael/quickbench
 .PP
 bench(1): https://github.com/Gabriel439/bench
+.PP
+time(1)
 .SH COPYRIGHT
 .PP
 Copyright (C) 2008\-2016 Simon Michael.

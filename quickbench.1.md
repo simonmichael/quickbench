@@ -108,7 +108,7 @@ https://github.com/simonmichael/quickbench/issues
 
 # SEE ALSO
 
-Home: https://github.com/simonmichael/quickbench
+Home page: https://github.com/simonmichael/quickbench
 
 bench(1): https://github.com/Gabriel439/bench
 

@@ -10,16 +10,16 @@ Quick & easy benchmarking of command-line programs.
 
 ## About
 
-quickbench is an update and repackaging of a benchmarking tool I've been 
+quickbench is an update and repackaging of a little benchmarking tool I've been 
 using in the hledger project since 2008.
-Use it like a more powerful "time" command for benchmarking general command-line programs,
+Use it like a more powerful "time" command for measuring the time taken by command-line programs,
 or for creating repeatable benchmark scripts for your projects.
 
 quickbench produces very simple output (elapsed seconds),
 as quickly as possible (running commands just once by default),
 and tabulates results from multiple executables.
 I find it very useful for quick and dirty, exploratory, and comparative measurements
-that I (and others) can understand at a glance.
+that you can understand at a glance.
 
 ## Examples
 
@@ -27,7 +27,7 @@ Install it easily on most platforms with [stack](https://haskell-lang.org/get-st
 It's not yet on Hackage, so you'll need the source:
 
 ```
-$ git clone https://github.com/simonmichael/quickbench.git
+$ git clone https://github.com/simonmichael/quickbench
 $ cd quickbench
 $ stack install   # ensure $PATH includes ~/.local/bin
 ```
@@ -74,7 +74,7 @@ Best times:
 ```
 
 and run tests repeatedly to reduce or observe jitter. 
-(quickbench assumes the quickest measurement is the truest one):
+quickbench assumes the quickest measurement is the truest one:
 ```
 $ quickbench -w echo,expr -p5 -n100 -N2
 Running 1 tests 100 times with 2 executables at 2016-10-16 23:57:34.387764 UTC:
