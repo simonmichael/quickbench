@@ -62,7 +62,6 @@ defaultFile :: FilePath
 defaultFile = "bench.sh"
 
 data Opts = Opts {
-   docopts     :: Arguments,
    file        :: Maybe FilePath
   ,executables :: [String]
   ,iterations  :: Int
@@ -91,7 +90,6 @@ getOpts = do
   precision'  <- readint $ fromJust $ option "precision"
   let
     opts = Opts {
-       docopts     = dopts,
        file        = option "file"
       ,executables = maybe [] (splitOn ",") $ option "with"
       ,iterations  = iterations'
@@ -103,7 +101,8 @@ getOpts = do
       ,help        = flag "help"
       ,clicmds     = args
       }
-  when (debug opts || "--debug" `elem` lateflags) $ err $ ppShow opts ++ "\n"
+  when (debug opts || "--debug" `elem` lateflags) $ do
+    err $ "docopts: " ++ ppShow dopts ++ "\n" ++ ppShow opts ++ "\n"
   when (help opts) $ putStrLn (usage docoptpatterns) >> exitSuccess
   -- try to report some errors docopts misses
   case (lateflags, args) of
