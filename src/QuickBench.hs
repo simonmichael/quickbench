@@ -54,14 +54,15 @@ Options:
 -- quickbench.cabal
 -- README.md
 -- quickbench.1.md
--- any Just assumptions below, if changing [default] annotations.
+-- unknown option checking below
+-- Just assumptions below, if changing [default] annotations.
 -- Try to avoid writing the same thing different ways in all of these places.
 
 defaultFile :: FilePath
 defaultFile = "bench.sh"
 
 data Opts = Opts {
---    docopts     :: Arguments,
+   docopts     :: Arguments,
    file        :: Maybe FilePath
   ,executables :: [String]
   ,iterations  :: Int
@@ -90,7 +91,7 @@ getOpts = do
   precision'  <- readint $ fromJust $ option "precision"
   let
     opts = Opts {
---        docopts     = dopts,
+       docopts     = dopts,
        file        = option "file"
       ,executables = maybe [] (splitOn ",") $ option "with"
       ,iterations  = iterations'
@@ -104,10 +105,24 @@ getOpts = do
       }
   when (debug opts || "--debug" `elem` lateflags) $ err $ ppShow opts ++ "\n"
   when (help opts) $ putStrLn (usage docoptpatterns) >> exitSuccess
-  unless (null lateflags) $
-    fail $ printf "option %s should appear before argument %s"
-      (show $ head lateflags)
-      (show $ head args) -- safe, we don't see lateflags without some regular args
+  -- try to report some errors docopts misses
+  case (lateflags, args) of
+    -- unknown option
+    -- quickbench a -fk       user error (unknown option: "fk")
+    -- (f:_,[]) | not $ elem f [
+    --    "file","f"
+    --   ,"with","w"
+    --   ,"iterations","n"
+    --   ,"cycles","N"
+    --   ,"precision","p"
+    --   ,"verbose","v"
+    --   ,"more-verbose","V"
+    --   ] -> fail $ printf "unknown option: %s" (show f)
+    -- option value missing
+    (f:_,[]) -> fail $ printf "option %s needs a value or is unknown" (show f)
+    -- option following arguments
+    (f:_,a:_) -> fail $ printf "option %s should appear before argument %s or is unknown" (show f) (show a)
+    _ -> return ()
   return opts
 
 -- | Run the quickbench program, returning an error message if there was a problem.
