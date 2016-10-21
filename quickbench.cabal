@@ -1,7 +1,13 @@
 name:                quickbench
 version:             1.0
 synopsis:            quick & easy benchmarking of command-line programs
-description:         Please see README.md
+description:
+  quickbench produces very simple output (elapsed seconds),
+  as quickly as possible (running commands just once by default),
+  and tabulates results from multiple executables.
+  I find it very useful for quick and dirty, exploratory, and comparative measurements
+  that you can understand at a glance.
+  Please see the readme for more.
 homepage:            https://github.com/simonmichael/quickbench#readme
 license:             GPL
 license-file:        LICENSE
