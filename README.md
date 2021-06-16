@@ -3,9 +3,10 @@
 Quick & easy benchmarking of command-line programs.
 
   [About](#about)
+| [Install](#install)
 | [Examples](#examples) 
-| [Usage](#usage)
-| [Related](#related-work)
+| [Options](#options)
+| [Related tools](#related-tools)
 
 
 ## About
@@ -21,16 +22,23 @@ and tabulates results from multiple executables.
 I find it very useful for quick and dirty, exploratory, and comparative measurements
 that you can understand at a glance.
 
-## Examples
+## Install
 
-Install it easily on most platforms with [stack](https://haskell-lang.org/get-started) (or cabal). 
-It's not yet on Hackage, so you'll need the source:
+You can build it from source on most platforms supporting [GHC](https://haskell.org/ghc). 
+A [patch](https://github.com/docopt/docopt.hs/pull/34) is required for one of the dependencies,
+so for now you must build quickbench from inside its source tree, with 
+[stack](https://www.fpcomplete.com/haskell/get-started/)
+(or if you build with [cabal](https://cabal.readthedocs.io), ensure it uses the docopt version mentioned in stack.yaml):
 
 ```
 $ git clone https://github.com/simonmichael/quickbench
 $ cd quickbench
-$ stack install   # ensure $PATH includes ~/.local/bin
+$ stack install
 ```
+
+stack will advise you to add ~/.local/bin to $PATH if needed.
+
+## Examples
 
 You can specify test commands as arguments:
 ```
@@ -139,7 +147,7 @@ Best times:
 +-----------------------------------++--------------------+---------------------+
 ```
 
-## Usage
+## Options
 
 ```
 $ quickbench -h
@@ -167,7 +175,7 @@ Options:
   -h, --help            show this help
 ```
 
-## Related
+## Related tools
 
 [bench](https://github.com/Gabriel439/bench#readme) (Gabriel Gonzalez 2016) is another 
 command line benchmarking tool written in Haskell.
