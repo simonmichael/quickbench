@@ -6,5 +6,5 @@ packages:
 extra-deps:
 # This is https://github.com/docopt/docopt.hs/pull/34 supporting MonadFail.
 # More context at https://github.com/docopt/docopt.hs/issues/33.
-- git: git@github.com:gelisam/docopt.hs
+- git: https://github.com/gelisam/docopt.hs
   commit: 16dc7bc596c0ea4fa4466b12f474b1abfa72c885
