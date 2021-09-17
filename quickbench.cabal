@@ -1,5 +1,5 @@
 name:                quickbench
-version:             1.0
+version:             1.0.1
 synopsis:            quick & easy benchmarking of command-line programs
 description:
   quickbench produces very simple output (elapsed seconds),
@@ -46,7 +46,7 @@ executable quickbench
   hs-source-dirs:      app
   main-is:             Main.hs
   build-depends:
-     quickbench == 1.0
+     quickbench == 1.0.1
     ,base
     ,process
   default-language:    Haskell2010
