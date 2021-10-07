@@ -21,7 +21,7 @@ tested-with:         GHC==8.0
 
 extra-source-files:
   README.md
-  CHANGES
+  CHANGES.md
   stack.yaml
   quickbench.1
 

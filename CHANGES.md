@@ -1,6 +1,6 @@
-1.0.1 2021-06-15
+1.0.1 2021-10-06
 
-- update README, build instructions, & stack.yaml file.
+- build cleanly with current GHC & libs
 
 1.0 2016-10-21
 
