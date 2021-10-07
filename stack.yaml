@@ -4,10 +4,4 @@ packages:
 - '.'
 
 extra-deps:
-# 0.7.0.6 supporting MonadFail, not yet on hackage
-# https://github.com/docopt/docopt.hs/issues/33
-# - git: https://github.com/docopt/docopt.hs
-#   commit: ec166a330fe00ed8f518b1079ac315e23b0d1f8d
-# 0.7.0.6+ with updated bounds
-- git: https://github.com/simonmichael/docopt.hs
-  commit: f22e60f936aeb6e83f774ee3abd370dff2815c94
+- docopt-0.7.0.7

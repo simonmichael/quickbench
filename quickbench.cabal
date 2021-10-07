@@ -32,7 +32,7 @@ library
      base >= 4.7 && < 5
     ,containers
     ,directory
-    ,docopt >= 0.7.0.4
+    ,docopt >= 0.7.0.7
     ,pretty-show
     ,process
     ,safe
