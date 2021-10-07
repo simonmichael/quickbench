@@ -46,7 +46,7 @@ executable quickbench
   hs-source-dirs:      app
   main-is:             Main.hs
   build-depends:
-     quickbench == 1.0.1
+     quickbench
     ,base
     ,process
   default-language:    Haskell2010
