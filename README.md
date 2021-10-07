@@ -197,3 +197,6 @@ mean                 3.564 ms   (3.497 ms .. 3.684 ms)
 std dev              280.3 μs   (178.0 μs .. 494.9 μs)
 variance introduced by outliers: 52% (severely inflated)
 ```
+
+[hyperfine](https://github.com/sharkdp/hyperfine) also does statistical analysis
+and has good usability.
