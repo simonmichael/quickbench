@@ -200,3 +200,5 @@ variance introduced by outliers: 52% (severely inflated)
 
 [hyperfine](https://github.com/sharkdp/hyperfine) also does statistical analysis
 and has good usability.
+
+The [tasty-bench](https://github.com/Bodigrim/tasty-bench) library looks like a good criterion/gauge alternative.
