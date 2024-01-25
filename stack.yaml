@@ -1,7 +1,5 @@
-resolver: lts-18.10
-
+resolver: lts-20.26
 packages:
 - '.'
-
 extra-deps:
 - docopt-0.7.0.7
