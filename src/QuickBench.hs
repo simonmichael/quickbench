@@ -207,13 +207,16 @@ runTestOnce opts cmd exe iteration = do
 -- If the command line was empty, the executable is used as the new command line.
 -- If the executable was empty, the command line remains unchanged.
 -- (And if both were empty, return empty strings.)
+-- If the executable consists of multiple words, the first becomes the new
+-- command, and the rest are treated as its initial arguments.
 replaceExecutable :: String -> String -> (String,String,[String])
-replaceExecutable exe cmdline =
-  case (exe, words' cmdline) of
-    ("", [])       -> ("",  "",  [])
-    (_,  [])       -> (exe, exe, [])
-    ("", cmd:args) -> (unwords $ cmd:args, cmd, args)
-    (_,  _:args)   -> (unwords $ exe:args, exe, args)
+replaceExecutable exestring cmdline = (unwords argv, headDef "" argv, tailSafe argv)
+  where
+    exeWords = words' exestring
+    cmdWords = words' cmdline
+    argv = case exeWords of
+      [] -> cmdWords
+      _  -> exeWords ++ drop 1 cmdWords
 
 time :: Opts -> String -> [String] -> IO Float
 time opts exe args = do
