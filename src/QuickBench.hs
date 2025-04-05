@@ -49,14 +49,14 @@ Usage:
 Each command's first word should be an executable (not a shell builtin).
 Multi-word commands must be enclosed in quotes.
 Commands can also be read from a file specified with -f.
-If no commands are provided, it looks for commands in ./bench.sh.
+If no commands are provided, it looks for them in ./bench.sh.
 Any quickbench options should be written first, before the commands.
 
 Options:
-  -f, --file CMDFILE    file containing commands, one per line (- for stdin)
+  -f, --file CMDFILE    run commands from this file (- for stdin)
   -w, --with EXE[,...]  run commands with first word replaced by each EXE
   -n, --iterations=N    run each command this many times [default: 1]
-  -N, --cycles=N        run the whole test suite this many times [default: 1]
+  -N, --cycles=N        run the whole suite this many times [default: 1]
   -p, --precision=N     show times with this many decimal places [default: 2]
   -v, --verbose         show the commands being run
   -V, --more-verbose    show the commands' output

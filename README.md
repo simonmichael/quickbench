@@ -4,201 +4,232 @@ Quick & easy benchmarking of command-line programs.
 
   [About](#about)
 | [Install](#install)
-| [Examples](#examples) 
-| [Options](#options)
-| [Related tools](#related-tools)
+| [Usage](#usage)
+| [Limitations](#limitations)
+| [Todo](#todo)
 
 
 ## About
 
-quickbench is an update and repackaging of a little benchmarking tool I've been 
-using in the hledger project since 2008.
-Use it like a more powerful "time" command for measuring the time taken by command-line programs,
+quickbench grew from a little benchmarking tool I used in the hledger project since 2008.
+Think of it as a more powerful but still easy alternative to the unix `time` command,
+for measuring the time taken by command-line programs,
 or for creating repeatable benchmark scripts for your projects.
+I find it very useful for quick, exploratory, and comparative measurements that can be understood at a glance.
 
-quickbench produces very simple output (elapsed seconds),
-as quickly as possible (running commands just once by default),
-and tabulates results from multiple executables.
-I find it very useful for quick and dirty, exploratory, and comparative measurements
-that you can understand at a glance.
+Features:
+
+- runs one or more commands, optionally substituting different executables
+- shows results as quickly as possible, running each command just once by default
+- shows very simple output: elapsed wall-clock seconds (with configurable precision)
+- tabulates the results, with multiple executables shown side by side
+- is cross platform, GPLv3+ licensed, and actively used by its maintainer(s).
+
+Timeline:
+
+- 2008: I built a benchmarking tool early in the hledger project,
+  possibly inspired by a [similar tool](https://hackage.haskell.org/package/darcs-benchmark-0.1) in Darcs
+- 2016: released it as quickbench 1.0 on [hackage](https://hackage.haskell.org/package/quickbench)
+- 9 years of quietly doing its job, with just a minor release in 2021 for latest deps
+- 2025: development revived by some pull requests; updates, 1.1 in process
+
+Related tools:
+
+- [bench](https://github.com/Gabriel439/bench#readme) (2016) is another command line benchmarking tool written in Haskell.
+  It provides detailed statistical output and nice HTML reports. Its default output is not easy to understand.
+- [hyperfine](https://github.com/sharkdp/hyperfine) is the popular/powerful Rust alternative.
 
 ## Install
 
-You can build it from source on most platforms supporting [GHC](https://haskell.org/ghc). 
-A [patch](https://github.com/docopt/docopt.hs/pull/34) is required for one of the dependencies,
-so for now you must build quickbench from inside its source tree, with 
-[stack](https://www.fpcomplete.com/haskell/get-started/)
-(or if you build with [cabal](https://cabal.readthedocs.io), ensure it uses the docopt version mentioned in stack.yaml):
-
+You can install quickbench from source on all major platforms.
+You'll need Haskell build tools;
+you can get these from your packaging system,
+or [stack](https://docs.haskellstack.org/en/stable/),
+or [ghcup](https://www.haskell.org/ghcup).
+Then:
 ```
-$ git clone https://github.com/simonmichael/quickbench
-$ cd quickbench
-$ stack install
+cabal install quickbench-1.1
 ```
 
-stack will advise you to add ~/.local/bin to $PATH if needed.
-
-## Examples
-
-You can specify test commands as arguments:
+or
 ```
-$ quickbench 'sleep 1'
-Running 1 tests 1 times at 2016-10-16 23:06:48.058578 UTC:
+stack install quickbench-1.1
+```
+
+or
+```
+git clone https://github.com/simonmichael/quickbench
+cd quickbench
+stack install
+```
+
+quickbench does not seem to be packaged *anywhere* yet - please help with that if you can !
+
+
+## Usage
+
+For help, run:
+```
+$ quickbench -h
+...
+Usage:
+  quickbench [options] [CMD...]
+...
+```
+
+You can specify one or more commands as arguments on the command line.
+Here we time the "echo" and "sleep 1" commands.
+"sleep 1" is multi-word command, so it must be wrapped in quotes:
+```
+$ quickbench echo 'sleep 1'
+Running 2 tests 1 times at 2025-04-05 08:29:53 HST:
 
 Best times:
 +---------++------+
 |         ||      |
 +=========++======+
+| echo    || 0.01 |
 | sleep 1 || 1.01 |
 +---------++------+
 ```
 
-or put them in a file and use `-f FILE`. 
-A file named `bench.sh` in the current directory will be used automatically:
+Note both of these commands run executable programs -
+`echo` is both a shell builtin and an executable in the /bin directory,
+and quickbench is running the latter:
 ```
-$ echo 'echo 3 * 1000000' > bench.sh
+$ which echo
+echo is a shell builtin
+echo is /bin/echo
+$ which sleep
+sleep is /bin/sleep
+```
+
+You can also run commands from a file.
+Lines beginning with `#` are ignored:
+```
+$ cat - >script
+# important benchmark
+python3 -c "print(2 ** 10000)"
+ruby    -e "puts 2 ** 10000"
+ghc     -e "print $ 2 ** 10000"
+
+$ quickbench -f script
+Running 3 tests 1 times at 2025-04-05 11:17:13 HST:
+
+Best times:
++---------------------------------++------+
+|                                 ||      |
++=================================++======+
+| python3 -c "print(2 ** 10000)"  || 0.05 |
+| ruby    -e "puts 2 ** 10000"    || 0.07 |
+| ghc     -e "print $ 2 ** 10000" || 0.41 |
++---------------------------------++------+
+```
+
+A file named `bench.sh` in the current directory will be used as the default source of commands:
+```
+$ mv script bench.sh
 $ quickbench
-Running 1 tests 1 times at 2016-10-16 23:53:04.743899 UTC:
-
-Best times:
-+------------------++------+
-|                  ||      |
-+==================++======+
-| echo 3 * 1000000 || 0.00 |
-+------------------++------+
+Running 3 tests 1 times at 2025-04-05 11:19:43 HST:
+...
 ```
 
-You can compare results with different executables:
-```
-$ quickbench -w echo,expr -p5
-Running 1 tests 1 times with 2 executables at 2016-10-16 23:56:40.808703 UTC:
+The `-p DIGITS` option selects how many decimal places to display for times.
 
-Best times:
-+-------------++---------+---------+
-|             ||    echo |    expr |
-+=============++=========+=========+
-| 3 * 1000000 || 0.00229 | 0.00195 |
-+-------------++---------+---------+
-```
+Some repetition options can help show/reduce jitter, giving more confidence in the results:
+- `-n NUM` runs each test NUM times, keeping the fastest result
+- `-N NUM` runs the whole suite NUM times, displaying each run.
 
-and run tests repeatedly to reduce or observe jitter. 
-quickbench assumes the quickest measurement is the truest one:
-```
-$ quickbench -w echo,expr -p5 -n100 -N2
-Running 1 tests 100 times with 2 executables at 2016-10-16 23:57:34.387764 UTC:
+And the `-v` flag shows the commands being run. Or `-V` will show them with their output.
 
+```
+$ quickbench -p3 -n5 -N2 -v
+Running 3 tests 5 times at 2025-04-05 11:31:12 HST:
+1: python3 -c print(2 ** 10000)
+	[0.045s]
+2: python3 -c print(2 ** 10000)
+	[0.029s]
+3: python3 -c print(2 ** 10000)
+	[0.027s]
+4: python3 -c print(2 ** 10000)
+	[0.024s]
+5: python3 -c print(2 ** 10000)
+	[0.026s]
+1: ruby -e puts 2 ** 10000
+	[0.061s]
+2: ruby -e puts 2 ** 10000
+	[0.060s]
+...
 Best times 1:
-+-------------++---------+---------+
-|             ||    echo |    expr |
-+=============++=========+=========+
-| 3 * 1000000 || 0.00112 | 0.00135 |
-+-------------++---------+---------+
++---------------------------------++-------+
+|                                 ||       |
++=================================++=======+
+| python3 -c "print(2 ** 10000)"  || 0.024 |
+| ruby    -e "puts 2 ** 10000"    || 0.056 |
+| ghc     -e "print $ 2 ** 10000" || 0.315 |
++---------------------------------++-------+
 
 Best times 2:
-+-------------++---------+---------+
-|             ||    echo |    expr |
-+=============++=========+=========+
-| 3 * 1000000 || 0.00111 | 0.00136 |
-+-------------++---------+---------+
++---------------------------------++-------+
+|                                 ||       |
++=================================++=======+
+| python3 -c "print(2 ** 10000)"  || 0.023 |
+| ruby    -e "puts 2 ** 10000"    || 0.057 |
+| ghc     -e "print $ 2 ** 10000" || 0.316 |
++---------------------------------++-------+
 ```
 
-You can turn a shell script into a benchmark suite by adding a shebang line:  
+You can run each command with its first word replaced by a different executable:
 ```
-$ cat 410-run-time.sh
-#!/usr/bin/env quickbench -v -p2 -n2 -w hledger-410-before,hledger-410-8bde75c -f
-hledger -f 10000x1000x10.journal print
-hledger -f 10000x1000x10.journal register
-hledger -f 10000x1000x10.journal balance
-
-$ ./410-run-time.sh
-Running 3 tests 2 times with 2 executables at 2016-10-16 23:42:57.349721 UTC:
-1: hledger-410-before -f 10000x1000x10.journal print
-        [3.14s]
-2: hledger-410-before -f 10000x1000x10.journal print
-        [2.90s]
-1: hledger-410-8bde75c -f 10000x1000x10.journal print
-        [3.13s]
-2: hledger-410-8bde75c -f 10000x1000x10.journal print
-        [2.92s]
-1: hledger-410-before -f 10000x1000x10.journal register
-        [3.52s]
-2: hledger-410-before -f 10000x1000x10.journal register
-        [3.52s]
-1: hledger-410-8bde75c -f 10000x1000x10.journal register
-        [3.51s]
-2: hledger-410-8bde75c -f 10000x1000x10.journal register
-        [3.66s]
-1: hledger-410-before -f 10000x1000x10.journal balance
-        [3.38s]
-2: hledger-410-before -f 10000x1000x10.journal balance
-        [1.93s]
-1: hledger-410-8bde75c -f 10000x1000x10.journal balance
-        [1.93s]
-2: hledger-410-8bde75c -f 10000x1000x10.journal balance
-        [1.80s]
+$ quickbench -p3 -n5 -w ghc-9.6,ghc-9.8,ghc-9.10,ghc-9.12 'ghc -e "print $ 2 ** 1000000"'
+Running 1 tests 5 times with 4 executables at 2025-04-05 11:39:24 HST:
 
 Best times:
-+-----------------------------------++--------------------+---------------------+
-|                                   || hledger-410-before | hledger-410-8bde75c |
-+===================================++====================+=====================+
-| -f 10000x1000x10.journal print    ||               2.90 |                2.92 |
-| -f 10000x1000x10.journal register ||               3.52 |                3.51 |
-| -f 10000x1000x10.journal balance  ||               1.93 |                1.80 |
-+-----------------------------------++--------------------+---------------------+
++---------------------------++---------+---------+----------+----------+
+|                           || ghc-9.6 | ghc-9.8 | ghc-9.10 | ghc-9.12 |
++===========================++=========+=========+==========+==========+
+| -e "print $ 2 ** 1000000" ||   0.319 |   0.318 |    0.309 |    0.335 |
++---------------------------++---------+---------+----------+----------+
 ```
 
-## Options
-
+You can convert a shell script to a benchmark suite by adding a quickbench shebang line,
+like this (some systems will require `env -S`):
 ```
-$ quickbench -h
-quickbench 1.1
-Run some test commands, possibly with different executables, once or more
-and show their best execution times.
-Commands are specified as one or more quote-enclosed arguments,
-and/or one per line in CMDSFILE; or read from a default file [./bench.sh].
-With -w, commands' first words are replaced with a new executable
-(or multiple comma-separated executables, showing times for all).
-Note: tests executable files only, not shell builtins; options must precede args.
+$ cat 410-times.sh
+#!/usr/bin/env quickbench -n2 -w hledger-410-before,hledger-410-8bde75c -f
+hledger -f 10k.journal print
+hledger -f 10k.journal register
+hledger -f 10k.journal balance
 
-Usage:
-  quickbench [options] [<cmd>...]
+$ ./410-times.sh
+Running 3 tests 2 times with 2 executables at 2016-10-16 23:42:57.349721 UTC:
 
-Options:
-  -f, --file CMDSFILE   file containing commands, one per line (- for stdin)
-  -w, --with EXE[,...]  replace first word of commands with these executables
-  -n, --iterations=N    run each test this many times [default: 1]
-  -N, --cycles=N        run the whole suite this many times [default: 1]
-  -p, --precision=N     show times with this many decimal places [default: 2]
-  -v, --verbose         show commands being run
-  -V, --more-verbose    show command output
-      --debug           show debug output for this program
-  -h, --help            show this help
+Best times:
++-------------------------++--------------------+---------------------+
+|                         || hledger-410-before | hledger-410-8bde75c |
++=========================++====================+=====================+
+| -f 10k.journal print    ||               2.90 |                2.92 |
+| -f 10k.journal register ||               3.52 |                3.51 |
+| -f 10k.journal balance  ||               1.93 |                1.80 |
++-------------------------++--------------------+---------------------+
 ```
 
-## Related tools
 
-[bench](https://github.com/Gabriel439/bench#readme) (Gabriel Gonzalez 2016) is another 
-command line benchmarking tool written in Haskell.
-Use that one if you need detailed statistical analysis and output, or HTML reports. 
-Here is bench's output for the echo/expr example above: 
-```
-$ bench 'echo 3 * 1000000'; bench 'expr 3 \* 1000000'
-benchmarking echo 3 * 1000000
-time                 2.215 ms   (2.173 ms .. 2.250 ms)
-                     0.995 R²   (0.989 R² .. 0.998 R²)
-mean                 2.238 ms   (2.203 ms .. 2.296 ms)
-std dev              147.6 μs   (92.84 μs .. 265.3 μs)
-variance introduced by outliers: 48% (moderately inflated)
+## Quirks
 
-benchmarking expr 3 \* 1000000
-time                 3.484 ms   (3.405 ms .. 3.556 ms)
-                     0.994 R²   (0.987 R² .. 0.998 R²)
-mean                 3.564 ms   (3.497 ms .. 3.684 ms)
-std dev              280.3 μs   (178.0 μs .. 494.9 μs)
-variance introduced by outliers: 52% (severely inflated)
-```
+Some current limitations/quirks of quickbench:
 
-[hyperfine](https://github.com/sharkdp/hyperfine) also does statistical analysis
-and has good usability.
+- It doesn't allow quickbench options to be written after the commands.
+- Some options, like `--debug`, may appear to work there, but they don't work completely and it still complains.
+- If you forget the quotes, as in `quickbench echo -n a`, it gives an unclear "should appear before argument or is unknown" error.
+- Commands which fail show an error message above the table, but not within it.
 
-The [tasty-bench](https://github.com/Bodigrim/tasty-bench) library looks like a good criterion/gauge alternative.
+
+## Todo
+
+- land PRs
+- update docs
+- doc deduplication/automation
+- tests
+- release 1.1
+- packaging

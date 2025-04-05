@@ -1,8 +1,10 @@
 ## 1.1 unreleased
 
-- command line help cleanup
+- fix: handle spaces in quoted command arguments; debug output; cleanups
 - fix non-exhaustive patterns build warning
 - arbitrarily require ghc 9.6+; add stack configs for ghc 9.6-9.12
+- command line help cleanup
+- docs cleanup
 
 ## 1.0.1 2021-10-06
 
