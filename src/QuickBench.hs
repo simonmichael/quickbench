@@ -185,14 +185,18 @@ runTestOnce opts cmd exe iteration = do
   outv opts $ printf "\t[%ss]\n" (showtime opts t)
   return t
 
--- | Replace a command's first word with the specified executable.
--- If the executable is empty, the command remains unchanged.
--- If the command is empty, the executable becomes the command.
--- Return the new command string, executable, and arguments.
+-- | Replace a command line's command (first word) with the given executable.
+-- Returns the new command line, its command, and its arguments.
+-- If the command line was empty, the executable is used as the new command line.
+-- If the executable was empty, the command line remains unchanged.
+-- (And if both were empty, return empty strings.)
 replaceExecutable :: String -> String -> (String,String,[String])
-replaceExecutable exe ""  = (exe, exe, [])
-replaceExecutable ""  cmd = (cmd, w, ws) where w:ws = words $ clean cmd
-replaceExecutable exe cmd = (unwords (exe:args), exe, args) where args = drop 1 $ words $ clean cmd
+replaceExecutable exe cmdline =
+  case (exe, words $ clean cmdline) of
+    ("", [])       -> ("",  "",  [])
+    (_,  [])       -> (exe, exe, [])
+    ("", cmd:args) -> (unwords $ cmd:args, cmd, args)
+    (_,  _:args)   -> (unwords $ exe:args, exe, args)
   -- XXX might display wrong quoting here
 
 time :: Opts -> String -> [String] -> IO Float
