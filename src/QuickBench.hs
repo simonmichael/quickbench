@@ -35,16 +35,16 @@ import qualified Text.Tabular.AsciiArt as TA
 docoptpatterns :: Docopt
 docoptpatterns = [docopt|
 ------------------------------------------------------------------------------
-quickbench 1.1 - run programs and show how long they took.
-
-Each command must begin with the name of an executable (not a shell command).
-Multi-word commands should be enclosed in quotes.
-Commands can also be read from a file, specified with -f.
-If neither of these are provided, it looks for commands in `./bench.sh`.
-Any quickbench options must be written first, before the commands.
+quickbench 1.1 - run commands and show how long they took.
 
 Usage:
-  quickbench [options] [-f CMDFILE] [CMD...]
+  quickbench [options] [CMD...]
+
+Each command's first word should be an executable (not a shell command).
+Multi-word commands must be enclosed in quotes.
+Commands can also be read from a file, specified with -f.
+If no commands are provided, it looks for commands in ./bench.sh.
+Any quickbench options should be written first, before the commands.
 
 Options:
   -f, --file CMDFILE    file containing commands, one per line (- for stdin)
