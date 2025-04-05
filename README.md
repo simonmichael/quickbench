@@ -23,6 +23,7 @@ Features:
 - shows results as quickly as possible, running each command just once by default
 - shows very simple output: elapsed wall-clock seconds (with configurable precision)
 - tabulates the results, with multiple executables shown side by side
+- does not require knowledge of statistics
 - is cross platform, GPLv3+ licensed, and actively used by its maintainer(s).
 
 Timeline:
