@@ -1,23 +1,25 @@
-name:                quickbench
-version:             1.0.1
-synopsis:            quick & easy benchmarking of command-line programs
+cabal-version: 3.0
+name:          quickbench
+version:       1.0.1
+synopsis:      quick & easy benchmarking of command-line programs
 description:
   quickbench produces very simple output (elapsed seconds),
   as quickly as possible (running commands just once by default),
   and tabulates results from multiple executables.
-  I find it very useful for quick and dirty, exploratory, and comparative measurements
+  I find it very useful for quick, exploratory, and comparative measurements
   that you can understand at a glance.
   Please see the readme for more.
-homepage:            https://github.com/simonmichael/quickbench#readme
-license:             GPL
-license-file:        LICENSE
-author:              Simon Michael
-maintainer:          simon@joyful.com
-copyright:           Copyright: (c) 2008-2016 Simon Michael
 category:            Development
+stability:           stable
+homepage:            https://github.com/simonmichael/quickbench
+bug-reports:         https://github.com/simonmichael/quickbench/issues
+author:              Simon Michael <simon@joyful.com>
+maintainer:          Simon Michael <simon@joyful.com>
+copyright:           Copyright: (c) 2008-2025 Simon Michael and contributors
+license:             GPL-3.0-or-later
+license-file:        LICENSE
 build-type:          Simple
-cabal-version:       >=1.10
-tested-with:         GHC==8.0
+tested-with:         ghc==9.6, ghc==9.8, ghc==9.10
 
 extra-source-files:
   README.md
@@ -25,42 +27,43 @@ extra-source-files:
   stack.yaml
   quickbench.1
 
+source-repository head
+  type:     git
+  location: https://github.com/simonmichael/quickbench
+
 library
   hs-source-dirs:      src
   exposed-modules:     QuickBench
-  build-depends:
-     base >= 4.18 && < 5
-    ,containers
-    ,directory
-    ,docopt >= 0.7.0.7
-    ,pretty-show
-    ,process
-    ,safe
-    ,split
-    ,tabular
-    ,time
   default-language:    Haskell2010
   ghc-options:         -Wall
+  build-depends:
+    base >= 4.18 && < 5,
+    containers,
+    directory,
+    docopt >= 0.7.0.7,
+    pretty-show,
+    process,
+    safe,
+    split,
+    tabular,
+    time,
 
 executable quickbench
   hs-source-dirs:      app
   main-is:             Main.hs
-  build-depends:
-     quickbench
-    ,base
-    ,process
   default-language:    Haskell2010
   ghc-options:         -Wall
+  build-depends:
+    quickbench,
+    base,
+    process,
 
 test-suite quickbench-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Spec.hs
-  build-depends:       base
-                     , quickbench
-  ghc-options:         -Wall
   default-language:    Haskell2010
-
-source-repository head
-  type:     git
-  location: https://github.com/simonmichael/quickbench
+  ghc-options:         -Wall
+  build-depends:
+    base,
+    quickbench,
