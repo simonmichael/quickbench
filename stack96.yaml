@@ -1,0 +1,5 @@
+packages:
+- '.'
+snapshot: lts-22.43
+extra-deps:
+- docopt-0.7.0.8
