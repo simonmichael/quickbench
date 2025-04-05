@@ -1,19 +1,23 @@
-{-# LANGUAGE ScopedTypeVariables, QuasiQuotes #-}
+{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
 
-module QuickBench (
-  defaultMain
-)
+module QuickBench
+-- (
+--   defaultMain
+-- )
 where
 
+-- import Debug.Trace
 import Control.Exception
 import Control.Monad
+import Data.Char (isSpace)
 import Data.List
 import Data.List.Split (splitOn)
 import Data.Maybe
 import Data.Time.Clock
 import Data.Time.Format
 import Data.Time.LocalTime
--- import Debug.Trace
 import Safe
 import System.Console.Docopt
 import System.Directory
@@ -21,17 +25,19 @@ import System.Environment
 import System.Exit
 import System.IO
 import System.Process
+import Text.Megaparsec (ParsecT, Stream (Token), between, many, noneOf, runParser, satisfy, sepBy, takeWhile1P, (<|>))
+import Text.Megaparsec.Char (char)
 import Text.Show.Pretty
 import Text.Printf
 import Text.Tabular
 import qualified Text.Tabular.AsciiArt as TA
 
+
 -- Command line help, parsed by docopt to generate the CLI.
--- docopt's parsing is fragile and easy to break; always test after changing this.
--- https://github.com/docopt/docopt.hs#readme
--- https://github.com/docopt/docopt.hs?tab=readme-ov-file#help-text-format
+-- This is fragile and easy to break; always test after any changes.
+-- See also: https://github.com/docopt/docopt.hs?tab=readme-ov-file#help-text-format
 -- https://hackage.haskell.org/package/docopt-0.7.0.8/docs/System-Console-Docopt.html
--- Remember to keep versions etc synced between here, quickbench.cabal, quickbench.1.md, README.md.
+-- Keep version & doc synced: here, quickbench.cabal, quickbench.1.md, README.md
 docoptpatterns :: Docopt
 docoptpatterns = [docopt|
 ------------------------------------------------------------------------------
@@ -40,9 +46,9 @@ quickbench 1.1 - run commands and show how long they took.
 Usage:
   quickbench [options] [CMD...]
 
-Each command's first word should be an executable (not a shell command).
+Each command's first word should be an executable (not a shell builtin).
 Multi-word commands must be enclosed in quotes.
-Commands can also be read from a file, specified with -f.
+Commands can also be read from a file specified with -f.
 If no commands are provided, it looks for commands in ./bench.sh.
 Any quickbench options should be written first, before the commands.
 
@@ -82,8 +88,8 @@ getOpts = do
     Left e -> putStrLn "Could not parse command line:" >> print e >> exitFailure
     Right dopts -> do
       let
-        flag f   = dopts `isPresent` longOption f
-        option f = dopts `getArg`    longOption f
+        flag f = dopts `isPresent` longOption f
+        opt f  = dopts `getArg`    longOption f
         readint s =
           case readMay s of
             Just a  -> return a
@@ -91,13 +97,13 @@ getOpts = do
         (lateflags, args) = partition ("-" `isPrefixOf`) $ dopts `getAllArgs` (argument "CMD")
       -- These will have a value because of their [default: ...] above.
       -- Use fromJust to show an error if the default is accidentally removed.
-      iterations' <- readint $ fromJust $ option "iterations"
-      cycles'     <- readint $ fromJust $ option "cycles"
-      precision'  <- readint $ fromJust $ option "precision"
+      iterations' <- readint $ fromJust $ opt "iterations"
+      cycles'     <- readint $ fromJust $ opt "cycles"
+      precision'  <- readint $ fromJust $ opt "precision"
       let
         opts = Opts {
-          file        = option "file"
-          ,executables = maybe [] (splitOn ",") $ option "with"
+          file         = opt "file"
+          ,executables = maybe [] (splitOn ",") $ opt "with"
           ,iterations  = iterations'
           ,cycles      = cycles'
           ,precision   = precision'
@@ -144,6 +150,7 @@ defaultMain =
   where
     runSuite = do
       opts <- getOpts
+      let istest s = not (null s' || ("#" `isPrefixOf` s')) where s' = strip s
       filecmds <-
         (filter istest . lines) <$>
         (case (file opts, clicmds opts) of
@@ -188,12 +195,13 @@ runTestWithExe opts cmd exe = mapM (runTestOnce opts cmd exe) [1..iterations opt
 runTestOnce :: Opts -> String -> String -> Int -> IO Float
 runTestOnce opts cmd exe iteration = do
   let (cmd',exe',args) = replaceExecutable exe cmd
-  dbg opts $ printf "replaceExecutable: %s -> %s\n" (show (cmd,exe)) (show (cmd',exe',args))
+  when (not $ null exe) $ dbg opts $ "replaced executable with " <> show exe
   outv opts (show iteration ++ ": " ++ cmd' ++ "\n")
   t <- time opts exe' args
   outv opts $ printf "\t[%ss]\n" (showtime opts t)
   return t
 
+-- XXX confusing
 -- | Replace a command line's command (first word) with the given executable.
 -- Returns the new command line, its command, and its arguments.
 -- If the command line was empty, the executable is used as the new command line.
@@ -201,20 +209,20 @@ runTestOnce opts cmd exe iteration = do
 -- (And if both were empty, return empty strings.)
 replaceExecutable :: String -> String -> (String,String,[String])
 replaceExecutable exe cmdline =
-  case (exe, words $ clean cmdline) of
+  case (exe, words' cmdline) of
     ("", [])       -> ("",  "",  [])
     (_,  [])       -> (exe, exe, [])
     ("", cmd:args) -> (unwords $ cmd:args, cmd, args)
     (_,  _:args)   -> (unwords $ exe:args, exe, args)
-  -- XXX might display wrong quoting here
 
 time :: Opts -> String -> [String] -> IO Float
 time opts exe args = do
+  dbg opts $ printf "running: %s\n" (show (exe,args))
   t1 <- getCurrentTime
   (c, o, e) <- readProcessWithExitCode' exe args ""
   t2 <- getCurrentTime
   when (not $ null o) $ outvv opts $ (if verbose opts then "\n" else "") ++ o
-  unless (c == ExitSuccess) $ out opts $ " (error: " ++ clean e ++ ") "
+  unless (c == ExitSuccess) $ out opts $ " (error: " ++ strip e ++ ") "
   return $ realToFrac $ diffUTCTime t2 t1
 
 -- ^ This variant also returns a failure when the executable is missing.
@@ -247,14 +255,10 @@ maketable opts rownames colnames results = Table rowhdrs colhdrs rows
   padright ss = map (printf (printf "%%-%ds" w)) ss
       where w = maximum $ map length ss
 
-showtime :: Opts -> (Float -> String)
-showtime opts = printf $ "%." ++ show (precision opts) ++ "f"
+---------------------------------------
+-- utils
 
-istest :: String -> Bool
-istest s = not (null s' || ("#" `isPrefixOf` s')) where s' = clean s
-
-clean :: String -> String
-clean = unwords . words
+-- IO
 
 out :: Opts -> String -> IO ()
 out _ = putStr
@@ -271,3 +275,47 @@ err = hPutStr stderr
 dbg :: Opts -> String -> IO ()
 dbg opts s = when (debug opts) $ err s
 
+showtime :: Opts -> (Float -> String)
+showtime opts = printf $ "%." ++ show (precision opts) ++ "f"
+
+-- Strings
+
+-- | Remove leading and trailing whitespace.
+strip :: String -> String
+strip = lstrip . rstrip
+
+-- | Remove leading whitespace.
+lstrip :: String -> String
+lstrip = dropWhile isSpace
+
+-- | Remove trailing whitespace.
+rstrip :: String -> String
+rstrip = reverse . lstrip . reverse
+
+-- XXX megaparsec dependency was added just for this
+-- Quote-aware version of words - don't split on spaces which are inside quotes.
+-- NB correctly handles "a'b" but not "''a''".
+-- Partial, can raise an error if parsing fails.
+words' :: String -> [String]
+words' ""  = []
+words' str = map stripquotes $ either errexit id $ runParser p "" str
+ where
+  errexit = errorWithoutStackTrace . ("parse error at " ++) . show
+  p = (singleQuotedPattern <|> doubleQuotedPattern <|> patterns) `sepBy` skipNonNewlineSpaces1
+  singleQuotedPattern = between (char '\'') (char '\'') (many $ noneOf "'")
+  doubleQuotedPattern = between (char '"') (char '"') (many $ noneOf "\"")
+  patterns = many (satisfy $ not . isSpace)
+  skipNonNewlineSpaces1 :: (Stream s, Token s ~ Char) => ParsecT String s m ()
+  skipNonNewlineSpaces1 = void $ takeWhile1P Nothing $ \c -> not (c == '\n') && isSpace c
+
+  -- | Strip one matching pair of single or double quotes on the ends of a string.
+  stripquotes :: String -> String
+  stripquotes s = if isSingleQuoted s || isDoubleQuoted s then init $ tailErr s else s -- PARTIAL tailErr won't fail because isDoubleQuoted
+
+  isSingleQuoted :: String -> Bool
+  isSingleQuoted s@(_ : _ : _) = headErr s == '\'' && last s == '\'' -- PARTIAL headErr, last will succeed because of pattern
+  isSingleQuoted _ = False
+
+  isDoubleQuoted :: String -> Bool
+  isDoubleQuoted s@(_ : _ : _) = headErr s == '"' && last s == '"' -- PARTIAL headErr, last will succeed because of pattern
+  isDoubleQuoted _ = False
