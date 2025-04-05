@@ -1,0 +1,13 @@
+packages: ['.']
+snapshot: ghc-9.12.2
+extra-deps:
+- docopt-0.7.0.8
+- pretty-show-1.10
+- safe-0.3.21
+- split-0.2.5
+- tabular-0.2.2.8
+- csv-0.1.2
+- happy-2.1.5
+- happy-lib-2.1.5
+- haskell-lexer-1.2.1
+- html-1.0.1.2
