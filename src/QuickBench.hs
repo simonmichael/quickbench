@@ -13,6 +13,7 @@ import Data.Maybe
 import Data.Time.Clock
 import Data.Time.Format
 import Data.Time.LocalTime
+-- import Debug.Trace
 import Safe
 import System.Console.Docopt
 import System.Directory
@@ -25,38 +26,38 @@ import Text.Printf
 import Text.Tabular
 import qualified Text.Tabular.AsciiArt as TA
 
----------------------------------------80----------------------------------------
+-- Command line help, parsed by docopt to generate the CLI.
+-- docopt's parsing is fragile and easy to break; always test after changing this.
+-- https://github.com/docopt/docopt.hs#readme
+-- https://github.com/docopt/docopt.hs?tab=readme-ov-file#help-text-format
+-- https://hackage.haskell.org/package/docopt-0.7.0.8/docs/System-Console-Docopt.html
+-- Remember to keep versions etc synced between here, quickbench.cabal, quickbench.1.md, README.md.
 docoptpatterns :: Docopt
-docoptpatterns = [docopt|quickbench 1.1
-Run some test commands, possibly with different executables, once or more
-and show their best execution times.
-Commands are specified as one or more quote-enclosed arguments,
-and/or one per line in CMDSFILE; or read from a default file [./bench.sh].
-With -w, commands' first words are replaced with a new executable
-(or multiple comma-separated executables, showing times for all).
-Note: tests executable files only, not shell builtins; options must precede args.
+docoptpatterns = [docopt|
+------------------------------------------------------------------------------
+quickbench 1.1 - run programs and show how long they took.
+
+Each command must begin with the name of an executable (not a shell command).
+Multi-word commands should be enclosed in quotes.
+Commands can also be read from a file, specified with -f.
+If neither of these are provided, it looks for commands in `./bench.sh`.
+Any quickbench options must be written first, before the commands.
 
 Usage:
-  quickbench [options] [<cmd>...]
+  quickbench [options] [-f CMDFILE] [CMD...]
 
 Options:
-  -f, --file CMDSFILE   file containing commands, one per line (- for stdin)
-  -w, --with EXE[,...]  replace first word of commands with these executables
-  -n, --iterations=N    run each test this many times [default: 1]
-  -N, --cycles=N        run the whole suite this many times [default: 1]
+  -f, --file CMDFILE    file containing commands, one per line (- for stdin)
+  -w, --with EXE[,...]  run commands with first word replaced by each EXE
+  -n, --iterations=N    run each command this many times [default: 1]
+  -N, --cycles=N        run the whole test suite this many times [default: 1]
   -p, --precision=N     show times with this many decimal places [default: 2]
-  -v, --verbose         show commands being run
-  -V, --more-verbose    show command output
-      --debug           show debug output for this program
+  -v, --verbose         show the commands being run
+  -V, --more-verbose    show the commands' output
+      --debug           show this program's debug output
   -h, --help            show this help
+
 |]
--- CLI help. When changing this, remember to sync:
--- quickbench.cabal
--- README.md
--- quickbench.1.md
--- unknown option checking below
--- Just assumptions below, if changing [default] annotations.
--- Try to avoid writing the same thing different ways in all of these places.
 
 defaultFile :: FilePath
 defaultFile = "bench.sh"
@@ -76,53 +77,61 @@ data Opts = Opts {
 
 getOpts :: IO Opts
 getOpts = do
-  dopts <- parseArgsOrExit docoptpatterns =<< getArgs
-  let
-    flag f   = dopts `isPresent` longOption f
-    option f = dopts `getArg` longOption f
-    readint s =
-      case readMay s of
-        Just a  -> return a
-        Nothing -> fail $ "could not read " ++ show s ++ " as an integer"
-    (lateflags,args) = partition ("-" `isPrefixOf`) $ dopts `getAllArgs` (argument "cmd")
-  iterations' <- readint $ fromJust $ option "iterations" -- fromJust safe because of [default:] above
-  cycles'     <- readint $ fromJust $ option "cycles"
-  precision'  <- readint $ fromJust $ option "precision"
-  let
-    opts = Opts {
-       file        = option "file"
-      ,executables = maybe [] (splitOn ",") $ option "with"
-      ,iterations  = iterations'
-      ,cycles      = cycles'
-      ,precision   = precision'
-      ,verbose     = flag "verbose"
-      ,moreVerbose = flag "more-verbose"
-      ,debug       = flag "debug"
-      ,help        = flag "help"
-      ,clicmds     = args
-      }
-  when (debug opts || "--debug" `elem` lateflags) $ do
-    err $ "docopts: " ++ ppShow dopts ++ "\n" ++ ppShow opts ++ "\n"
-  when (help opts) $ putStrLn (usage docoptpatterns) >> exitSuccess
-  -- try to report some errors docopts misses
-  case (lateflags, args) of
-    -- unknown option
-    -- quickbench a -fk       user error (unknown option: "fk")
-    -- (f:_,[]) | not $ elem f [
-    --    "file","f"
-    --   ,"with","w"
-    --   ,"iterations","n"
-    --   ,"cycles","N"
-    --   ,"precision","p"
-    --   ,"verbose","v"
-    --   ,"more-verbose","V"
-    --   ] -> fail $ printf "unknown option: %s" (show f)
-    -- option value missing
-    (f:_,[]) -> fail $ printf "option %s needs a value or is unknown" (show f)
-    -- option following arguments
-    (f:_,a:_) -> fail $ printf "option %s should appear before argument %s or is unknown" (show f) (show a)
-    _ -> return ()
-  return opts
+  cliargs <- getArgs
+  case parseArgs docoptpatterns cliargs of
+    Left e -> putStrLn "Could not parse command line:" >> print e >> exitFailure
+    Right dopts -> do
+      let
+        flag f   = dopts `isPresent` longOption f
+        option f = dopts `getArg`    longOption f
+        readint s =
+          case readMay s of
+            Just a  -> return a
+            Nothing -> fail $ "could not read " ++ show s ++ " as an integer"
+        (lateflags, args) = partition ("-" `isPrefixOf`) $ dopts `getAllArgs` (argument "CMD")
+      -- These will have a value because of their [default: ...] above.
+      -- Use fromJust to show an error if the default is accidentally removed.
+      iterations' <- readint $ fromJust $ option "iterations"
+      cycles'     <- readint $ fromJust $ option "cycles"
+      precision'  <- readint $ fromJust $ option "precision"
+      let
+        opts = Opts {
+          file        = option "file"
+          ,executables = maybe [] (splitOn ",") $ option "with"
+          ,iterations  = iterations'
+          ,cycles      = cycles'
+          ,precision   = precision'
+          ,verbose     = flag "verbose"
+          ,moreVerbose = flag "more-verbose"
+          ,debug       = flag "debug"
+          ,help        = flag "help"
+          ,clicmds     = args
+          }
+
+      when (debug opts || "--debug" `elem` lateflags) $ do
+        err $ "docopts: " ++ ppShow dopts ++ "\n" ++ ppShow opts ++ "\n"
+
+      when (help opts) $ putStrLn (usage docoptpatterns) >> exitSuccess
+
+      -- try to report some errors docopts misses
+      case (lateflags, args) of
+        -- unknown option
+        -- quickbench a -fk       user error (unknown option: "fk")
+        -- (f:_,[]) | not $ elem f [
+        --    "file","f"
+        --   ,"with","w"
+        --   ,"iterations","n"
+        --   ,"cycles","N"
+        --   ,"precision","p"
+        --   ,"verbose","v"
+        --   ,"more-verbose","V"
+        --   ] -> fail $ printf "unknown option: %s" (show f)
+        -- option value missing
+        (f:_,[]) -> fail $ printf "option %s needs a value or is unknown" (show f)
+        -- option following arguments
+        (f:_,a:_) -> fail $ printf "option %s should appear before argument %s or is unknown" (show f) (show a)
+        _ -> return ()
+      return opts
 
 -- | Run the quickbench program, returning an error message if there was a problem.
 defaultMain :: IO (Maybe String)
