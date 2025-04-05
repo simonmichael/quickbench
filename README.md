@@ -1,4 +1,4 @@
-# quickbench 1.0
+# quickbench
 
 Quick & easy benchmarking of command-line programs.
 
@@ -151,7 +151,7 @@ Best times:
 
 ```
 $ quickbench -h
-quickbench 1.0
+quickbench 1.1
 Run some test commands, possibly with different executables, once or more
 and show their best execution times.
 Commands are specified as one or more quote-enclosed arguments,

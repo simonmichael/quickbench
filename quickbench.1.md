@@ -1,6 +1,6 @@
-% quickbench(1) quickbench 1.0
+% quickbench(1) quickbench 1.1
 % Simon Michael <simon@joyful.com>
-% Oct 2016
+% Apr 2025
 
 # NAME
 
@@ -116,5 +116,5 @@ time(1)
 
 # COPYRIGHT
 
-Copyright (C) 2008-2016 Simon Michael.
+Copyright (C) 2008-2025 Simon Michael.
 Released under GNU GPL v3+

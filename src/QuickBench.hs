@@ -27,7 +27,7 @@ import qualified Text.Tabular.AsciiArt as TA
 
 ---------------------------------------80----------------------------------------
 docoptpatterns :: Docopt
-docoptpatterns = [docopt|quickbench 1.0
+docoptpatterns = [docopt|quickbench 1.1
 Run some test commands, possibly with different executables, once or more
 and show their best execution times.
 Commands are specified as one or more quote-enclosed arguments,
