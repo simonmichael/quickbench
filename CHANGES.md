@@ -1,10 +1,9 @@
 ## 1.1 unreleased
 
-- fix: handle spaces in quoted command arguments; debug output; cleanups
+- fix: handle commands which have quoted arguments containing spaces
 - fix non-exhaustive patterns build warning
 - arbitrarily require ghc 9.6+; add stack configs for ghc 9.6-9.12
-- command line help cleanup
-- docs cleanup
+- improved docs, command line help, debug output
 
 ## 1.0.1 2021-10-06
 

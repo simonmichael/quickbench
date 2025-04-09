@@ -8,7 +8,7 @@ quickbench - quick & easy benchmarking of command-line programs
 
 # SYNOPSIS
 
-`quickbench [options] [<cmd>...]`
+`quickbench [options] [CMD...]`
 
 # DESCRIPTION
 
@@ -109,8 +109,6 @@ https://github.com/simonmichael/quickbench/issues
 # SEE ALSO
 
 Home page: https://github.com/simonmichael/quickbench
-
-bench(1): https://github.com/Gabriel439/bench
 
 time(1)
 

@@ -229,7 +229,6 @@ Some current limitations/quirks of quickbench:
 ## Todo
 
 - land PRs
-- update docs
 - doc deduplication/automation
 - tests
 - release 1.1
