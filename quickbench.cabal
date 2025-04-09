@@ -22,9 +22,15 @@ tested-with:   ghc==9.6, ghc==9.8, ghc==9.10, ghc==9.12
 
 extra-source-files:
   README.md
-  CHANGES.md
+  stack96.yaml
+  stack98.yaml
   stack.yaml
+  stack912.yaml
   quickbench.1
+
+-- These are also copied to haddock docs.
+extra-doc-files:
+  CHANGES.md
 
 source-repository head
   type:     git
