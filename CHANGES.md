@@ -1,5 +1,6 @@
 ## 1.1 unreleased
 
+- The EXE argument of -w/-with can now be multi-word (providing new first word and initial arguments) ([#7], Thomas Miedema)
 - fix: handle commands which have quoted arguments containing spaces
 - fix non-exhaustive patterns build warning
 - arbitrarily require ghc 9.6+; add stack configs for ghc 9.6-9.12
