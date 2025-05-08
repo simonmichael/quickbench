@@ -18,12 +18,14 @@ import Data.Maybe
 import Data.Time.Clock
 import Data.Time.Format
 import Data.Time.LocalTime
+import GHC.IO.Exception (IOErrorType(..))
 import Safe
 import System.Console.Docopt
 import System.Directory
 import System.Environment
 import System.Exit
 import System.IO
+import System.IO.Error (mkIOError)
 import System.Process
 import Text.Megaparsec (ParsecT, Stream (Token), between, many, noneOf, runParser, satisfy, sepBy, takeWhile1P, (<|>))
 import Text.Megaparsec.Char (char)
@@ -226,17 +228,31 @@ time :: Opts -> String -> [String] -> IO Float
 time opts exe args = do
   dbg opts $ printf "running: %s\n" (show (exe,args))
   t1 <- getCurrentTime
-  (c, o, e) <- readProcessWithExitCode' exe args ""
+  maybeOutput <- if (moreVerbose opts)
+    then Just <$> readCreateProcess (proc exe args) ""
+    else const Nothing <$> callProcessIgnoreOutput exe args
   t2 <- getCurrentTime
-  when (not $ null o) $ outvv opts $ (if verbose opts then "\n" else "") ++ o
-  unless (c == ExitSuccess) $ out opts $ " (error: " ++ strip e ++ ") "
+  case maybeOutput of
+    Just o -> when (not $ null o) $ outvv opts $ (if verbose opts then "\n" else "") ++ o
+    Nothing -> return ()
   return $ realToFrac $ diffUTCTime t2 t1
 
--- ^ This variant also returns a failure when the executable is missing.
-readProcessWithExitCode' :: FilePath -> [String] -> String -> IO (ExitCode, String, String)
-readProcessWithExitCode' exe args inp =
-  readProcessWithExitCode exe args inp
-    `catch` \(e :: IOException) -> return (ExitFailure 1, "", show e)
+callProcessIgnoreOutput :: FilePath -> [String] -> IO ()
+callProcessIgnoreOutput cmd args =
+  withBinaryFile "/dev/null" WriteMode $ \devNull ->
+    withCreateProcess (proc cmd args){std_out = UseHandle devNull} $ \_ _ _ ph -> do
+      exit_code <- waitForProcess ph
+      case exit_code of
+        ExitSuccess   -> return ()
+        ExitFailure r -> processFailedException "callProcessIgnoreOutput" cmd args r
+
+-- Copy/paste from "process" System.Process.
+processFailedException :: String -> String -> [String] -> Int -> IO a
+processFailedException fun cmd args exit_code =
+      ioError (mkIOError OtherError (fun ++ ": " ++ cmd ++
+                                     concatMap ((' ':) . show) args ++
+                                     " (exit " ++ show exit_code ++ ")")
+                                 Nothing Nothing)
 
 printSummary :: Opts -> [String] -> [String] -> Int -> [[[Float]]] -> IO ()
 printSummary opts cmds exes cyc results = do
