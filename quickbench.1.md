@@ -44,6 +44,9 @@ With -w, commands' first words are replaced with a new executable
 `-p, --precision=N`
 : show times with this many decimal places [default: 2]
 
+`-m, --max-bytes-used`
+: measure max residency (Haskell programs compiled with `-rtsopts` only)
+
 `-v, --verbose`
 : show commands being run
 

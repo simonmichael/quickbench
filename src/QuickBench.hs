@@ -1,5 +1,7 @@
+{-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeOperators #-}
 
 module QuickBench
@@ -9,10 +11,11 @@ module QuickBench
 where
 
 -- import Debug.Trace
-import Control.Exception
+import Control.Exception hiding (handle)
 import Control.Monad
 import Data.Char (isSpace)
-import Data.List
+import Data.Functor
+import Data.List hiding (group)
 import Data.List.Split (splitOn)
 import Data.Maybe
 import Data.Time.Clock
@@ -29,6 +32,7 @@ import Text.Megaparsec (ParsecT, Stream (Token), between, many, noneOf, runParse
 import Text.Megaparsec.Char (char)
 import Text.Show.Pretty
 import Text.Printf
+import Text.Read
 import Text.Tabular
 import qualified Text.Tabular.AsciiArt as TA
 
@@ -58,6 +62,7 @@ Options:
   -n, --iterations=N    run each command this many times [default: 1]
   -N, --cycles=N        run the whole suite this many times [default: 1]
   -p, --precision=N     show times with this many decimal places [default: 2]
+  -m, --max-bytes-used  measure max residency (Haskell programs compiled with `-rtsopts` only)
   -v, --verbose         show the commands being run
   -V, --more-verbose    show the commands' output
       --debug           show this program's debug output
@@ -74,6 +79,7 @@ data Opts = Opts {
   ,iterations  :: Int
   ,cycles      :: Int
   ,precision   :: Int
+  ,maxBytesUsed:: Bool
   ,verbose     :: Bool
   ,moreVerbose :: Bool
   ,debug       :: Bool
@@ -109,6 +115,7 @@ getOpts = do
           ,precision   = precision'
           ,verbose     = flag "verbose"
           ,moreVerbose = flag "more-verbose"
+          ,maxBytesUsed= flag "max-bytes-used"
           ,debug       = flag "debug"
           ,help        = flag "help"
           ,clicmds     = args
@@ -190,14 +197,29 @@ getCurrentZonedTime = do
   tz <- getCurrentTimeZone
   return $ utcToZonedTime tz t
 
-runTestWithExes :: Opts -> [String] -> String -> IO [[Float]]
+runTestWithExes :: Opts -> [String] -> String -> IO [[(Float, Maybe Int)]]
 runTestWithExes opts exes cmd = mapM (runTestWithExe opts cmd) exes
 
-runTestWithExe :: Opts -> String -> String -> IO [Float]
+runTestWithExe :: Opts -> String -> String -> IO [(Float, Maybe Int)]
 runTestWithExe opts cmd exe = mapM (runTestOnce opts cmd exe) [1..iterations opts]
 
-runTestOnce :: Opts -> String -> String -> Int -> IO Float
-runTestOnce opts cmd exe iteration = do
+runTestOnce :: Opts -> String -> String -> Int -> IO (Float, Maybe Int)
+runTestOnce opts cmd exe iteration = if maxBytesUsed opts
+  then runTimeAndResidencyTest opts cmd exe iteration
+  else runTimeTest opts cmd exe iteration <&> (,Nothing)
+
+runTimeAndResidencyTest :: Opts -> String -> String -> Int -> IO (Float, Maybe Int)
+runTimeAndResidencyTest opts cmd exe iteration = withTempFile $ \name handle -> do
+  t <- runTimeTest opts (cmd ++ " +RTS --machine-readable -t" ++ name) exe iteration
+  _ <- hGetLine handle -- skip first line
+  stats <- hGetContents' handle
+  return (t, readMaybe stats >>= findMaxBytesUsed)
+ where
+  findMaxBytesUsed :: [(String, String)] -> Maybe Int
+  findMaxBytesUsed pairs = find ((== "max_bytes_used") . fst) pairs >>= readMaybe . snd
+
+runTimeTest :: Opts -> String -> String -> Int -> IO Float
+runTimeTest opts cmd exe iteration = do
   let (cmd',exe',args) = replaceExecutable exe cmd
   when (not $ null exe) $ dbg opts $ "replaced executable with " <> show exe
   outv opts (show iteration ++ ": " ++ cmd' ++ "\n")
@@ -238,7 +260,7 @@ readProcessWithExitCode' exe args inp =
   readProcessWithExitCode exe args inp
     `catch` \(e :: IOException) -> return (ExitFailure 1, "", show e)
 
-printSummary :: Opts -> [String] -> [String] -> Int -> [[[Float]]] -> IO ()
+printSummary :: Opts -> [String] -> [String] -> Int -> [[[(Float, Maybe Int)]]] -> IO ()
 printSummary opts cmds exes cyc results = do
   out opts $ printf "\nBest of %d times%s:\n" (iterations opts) (if cycles opts > 1 then ", cycle "++show cyc else "")
   let t = maketable opts cmds' exes results
@@ -253,14 +275,42 @@ printSummary opts cmds exes cyc results = do
         [e] -> [c | (c,_,_) <- map (replaceExecutable e) cmds]
         _   -> map (unwords . drop 1 . words) cmds
 
-maketable :: Opts -> [String] -> [String] -> [[[Float]]] -> Table String String String
-maketable opts rownames colnames results = Table rowhdrs colhdrs rows
+maketable :: Opts -> [String] -> [String] -> [[[(Float, Maybe Int)]]] -> Table String String String
+maketable opts rownames colnames results = Table rowhdrs grouphdrs (firstrow:rows)
  where
-  rowhdrs = Group NoLine $ map Header $ padright rownames
-  colhdrs = Group SingleLine $ map Header colnames
-  rows = map (map (showtime opts . minimum)) results
+  rowhdrs = makeRowHeaders rownames
+  grouphdrs = makeGroupHeaders opts colnames
+  firstrow = colnames ++ colnames
+  rows = map (makeRow opts) results
+
+makeRowHeaders :: [String] -> Header String
+makeRowHeaders rownames = Group DoubleLine [
+   Group NoLine [Header ""],
+   Group NoLine $ map Header $ padright rownames
+ ]
+ where
   padright ss = map (printf (printf "%%-%ds" w)) ss
       where w = maximum $ map length ss
+
+{-
+makeColumnHeaders :: Opts -> [String] -> Header String
+makeColumnHeaders opts colnames =
+  Group DoubleLine . replicate (if maxBytesUsed opts then 2 else 1) . Group SingleLine $ map Header colnames
+-}
+
+-- Workaround for https://github.com/bgamari/tabular/issues/4
+makeGroupHeaders :: Opts -> [String] -> Header String
+makeGroupHeaders opts colnames =
+  Group DoubleLine $ map (Group NoLine . headers) groups
+ where
+  groups = if maxBytesUsed opts then ["Time (s)", "Max bytes used"] else ["Time (s)"]
+  headers group = take (length colnames) . map Header $ group:repeat ""
+
+makeRow :: Opts -> [[(Float, Maybe Int)]] -> [String]
+makeRow opts results = if maxBytesUsed opts then times ++ bytes else times
+ where
+  times = map (showtime opts . minimum . map fst) results
+  bytes = map (showbytes opts . minimum . map (fromMaybe 0 . snd)) results
 
 ---------------------------------------
 -- utils
@@ -284,6 +334,23 @@ dbg opts s = when (debug opts) $ err s
 
 showtime :: Opts -> (Float -> String)
 showtime opts = printf $ "%." ++ show (precision opts) ++ "f"
+
+showbytes :: Opts -> Int -> String
+showbytes opts n
+  | abs n >= 1000_000_000 = printf ("%." ++ show (precision opts) ++ "fG") (fromIntegral n / 1000_0000_0000 :: Double)
+  | abs n >= 1000_000 = printf ("%." ++ show (precision opts) ++ "fM") (fromIntegral n / 1000_0000 :: Double)
+  | abs n >= 1000 = printf ("%." ++ show (precision opts) ++ "fK") (fromIntegral n / 1000 :: Double)
+  | otherwise       = show n
+
+withTempFile :: (FilePath -> Handle -> IO a) -> IO a
+withTempFile action = do
+  tmp_dir <- getTemporaryDirectory >>= canonicalizePath
+  bracket
+    (openTempFile tmp_dir "quickbench-")
+    (\(name, handle) -> hClose handle >> ignoringIOErrors (removeFile name))
+    (uncurry action)
+ where
+  ignoringIOErrors = void . (try :: IO a -> IO (Either IOException a))
 
 -- Strings
 
