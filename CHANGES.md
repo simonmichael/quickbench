@@ -1,6 +1,9 @@
 ## 1.1 unreleased
 
-- Improved: The EXE argument of -w/-with can now be multi-word (providing new first word and initial arguments) ([#7], Thomas Miedema)
+- Show more iterations/cycles (-n/-N) info in the output.
+- Improved: The EXE argument of -w/-with can now be multi-word (providing new first word and initial arguments).
+  Eg `quickbench -w 'hledger print','hledger balance'`.
+  ([#7], Thomas Miedema)
 - Improved: docs, command line help, debug output.
 - Fixed: commands which have quoted arguments containing spaces are now handled correctly.
 - Fixed a non-exhaustive patterns build warning.
