@@ -164,7 +164,11 @@ defaultMain =
         out opts "No test commands found; provide some as arguments, with -f, or in ./bench.sh\n"
         exitSuccess
       now <- getCurrentZonedTime
-      out opts $ printf "Running %d tests %d times%s at %s:\n"
+      out opts $ printf "Running %s%d tests best of %d times%s at %s:\n"
+        (case cycles opts of
+          0 -> ""
+          n -> show n <> " cycles of "
+          )
         (length cmds)
         (iterations opts)
         (case executables opts of
@@ -236,7 +240,7 @@ readProcessWithExitCode' exe args inp =
 
 printSummary :: Opts -> [String] -> [String] -> Int -> [[[Float]]] -> IO ()
 printSummary opts cmds exes cyc results = do
-  out opts $ printf "\nBest times%s:\n" (if cycles opts > 1 then " "++show cyc else "")
+  out opts $ printf "\nBest of %d times%s:\n" (iterations opts) (if cycles opts > 1 then ", cycle "++show cyc else "")
   let t = maketable opts cmds' exes results
   out opts $ TA.render id id id t
   -- let outname = "benchresults"
